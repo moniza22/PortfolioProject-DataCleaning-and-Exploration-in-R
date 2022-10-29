@@ -1,0 +1,222 @@
+---
+title: "EDA_CourseData"
+author: "Moniza Naseem"
+date: "2022-09-21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Loading Library
+```{r}
+library(tidyverse)
+library(lubridate)
+library(stringr)
+library(knitr)
+
+```
+
+# Importing Data
+```{r}
+dfRaw <- read_csv("Data/Data - DS C1 Course.csv")
+```
+
+# Reading Data
+```{r}
+colnames(dfRaw)
+head(dfRaw)
+```
+
+# Summarizing Data
+```{r}
+summary(dfRaw)
+```
+
+# Finding NA Values in Data
+```{r}
+is.na(dfRaw)
+sum(is.na(dfRaw))
+is.na(dfRaw$Payment)
+```
+
+# Changing NA Values to No in Col'Payment'
+```{r}
+dfRaw$Payment[is.na(dfRaw$Payment)] <- 'No' 
+dfRaw$Payment
+```
+# Replacing 'Maybe' with 'Pending' in dfRaw$Payment
+```{r}
+gsub('Maybe','Pending',dfRaw$Payment,ignore.case = TRUE)
+```
+
+
+
+# Visualizing Data
+```{r}
+dfRaw %>% select(Age) %>% n_distinct()
+
+```
+```{r}
+ggplot(dfRaw, aes(x=dfRaw$Age,y=dfRaw$Gender))+
+  geom_bar(stat="identity")
+```
+```{r}
+dfRaw %>% group_by(dfRaw$`Do you understand that this is a paid course ?...3`) %>% count()
+
+```
+
+```{r}
+ggplot(dfRaw, aes(x=dfRaw$`Do you understand that this is a paid course ?...3`,y=dfRaw$Gender))+
+  geom_bar(stat="identity")
+```
+
+# Filter rows where gender is female
+```{r}
+#female <- filter(dfRaw, Gender=="Female")
+#female
+#ggplot(female, aes(x=female$`Latest Degree Completed or in Progress?`, y=female$Age))+geom_bar(stat="identity")
+#summary(female) 
+
+```
+
+# Slicing Rows 1:20 by slice() fn
+
+```{r}
+#rowsSelected <- slice(dfRaw, c(1,3,5,7))
+#rowsSelected
+```
+
+# Arranging rows by col values
+
+```{r}
+##dfRawArranged <- arrange(dfRaw,Gender,Age)
+#dfRawArranged
+```
+
+# Selecting colums Gender and Age to see the trend
+# Using arrange() to arraange rows according to Gender and age
+```{r}
+
+#gender_age <- dfRaw %>% select('Gender', 'Age') %>% arrange(Gender,Age)  
+  #gender_age
+```
+# mutate() function to add new column, transfering age>30 as P and age<30 as S
+
+```{r}
+#new_dfRaw <- dfRaw %>% mutate(new_age = if_else(Age>30, true = 'P',false = 'S'))
+#new_dfRaw
+```
+# Summarizing ungrouped data
+```{r}
+# dfRaw %>% summarise(mean=mean(Age), n=n())
+# class(Age) ## here one entry is age <17 so R is unable to calculate mean.
+
+```
+# Summarizing grouped data
+```{r}
+dfRaw %>% group_by(Gender) %>% summarise(n=n())
+```
+# Data Cleaning
+
+```{r}
+dataRenamed <- dfRaw %>% rename(Id="Student ID", Date_time="Timestamp", Uni_col="Name of University or College currently or previously attended?", Platform="How and where did you hear about this course?")
+names(dataRenamed)
+```
+# Selecting Variables For Analysis
+```{r}
+select(dataRenamed, Id, Date_time, Uni_col, Platform)
+
+```
+# Make ID as rownames
+
+```{r}
+column_to_rownames(dataRenamed, var="Id")
+dataRenamed
+```
+# Converting Datetime column to Date_time type
+
+```{r}
+dataRenamed$Date_time <- lubridate::mdy_hms(dataRenamed$Date_time)
+
+```
+
+# Make data and time as separate variables
+
+```{r}
+dataRenamed <- tidyr::separate(dataRenamed, Date_time, c("Date","Time"), sep = " ")
+head(dataRenamed)
+```
+
+# Removing duplicates from Uni_col and Platform using unique()
+
+```{r}
+unique_Uni_col <- unique(dataRenamed$Uni_col)
+unique_Uni_col
+unique_Platform <- unique(dataRenamed$Platform)
+unique_Platform
+```
+
+# str_replace_all to rename universities/institutes
+
+
+```{r, echo=FALSE}
+
+dataRenamed <- dataRenamed %>%mutate(new_unicol= stringr::str_replace_all(string=Uni_col, c( "Quaid e Azam University Islamabad"="QU","Quaid e Azam University" ="QU", "Quaid I azam university"="QU","Quaid-I-Azam University, Islamabad"="QU","Quaid-i-Azam University Islamabad"="QU", "Quaid e Azzam university Islamabad"="QU","Quaid e Azam University.Islamabad"="QU","Quaid-e-Azam University Islamabad"="QU","Quaid e Azam university Islamabad"="QU","Quaid e Azam University.Islamabad"="QU",
+                                                                                                    "Institute of Business Administration"="IBA","Institute Of Business Administration, Karachi"="IBA","INSTITUTE OF BUISNESS ADMINISTRATION KARACHI"="IBA","Institute of business administration karachi"="IBA","Iba Karachi"="IBA" ,"IBA, Karachi"="IBA", "INSTITUTE OF BUSINESS ADMINISTRATION KARACHI"="IBA","Institute of business administration"="IBA","IBA (IBA)"="IBA","institute of business administration"="IBA", "IBA Karachi"="IBA","Institute of Business Adminstration"="IBA","Institute of Business Administration (IBA)"="IBA","IBA - Institute of Business Administration Karachi"="IBA","IBA, KARACHI"="IBA","Institute of Business Administration karachi"="IBA","Institute Of Business Administration"="IBA","Institute of Business Administration karachi"="IBA",
+                                                                                                    "Institute of Management Sciences Peshawar"="IMSP" ,"IMSP (IMScieces)"="IMSP", 
+                                                                                                  "NED University of Engineering & Technology"="NED",
+                                                                                                    "Ned university"="NED","NED University of Engineering and Technology Karachi"="NED","NED-UET Karachi"="NED","NED university of engineering and technology"="NED" , "NED University of Engineering and Technology"="NED","NED University"="NED","Ned University Of Engineering And Technology"="NED","Ned University"="NED",
+                                                                                                    "Sindh Madrresatul Islam University"="SMIU","Sindh Madarsatul Islam University"="SMIU","Sindh Madressatul Islam University"="SMIU","Sindh madressatul Islam university"="SMIU", "Student of Sindh madressatul Islam University"="SMIU",
+                                                                                                    "Sindh Muslim Government Science College"="SMGSC",
+                                                                                                    "bahria University Islamabad"="BU" , "Bahria University Karachi campus"="BU","Bahria university Islamabad"="BU",
+                                                                                                    "COMSATS University, Islamabad"="CU",
+                                                                                                  "Univeristy of agriculture"= "UA",
+                                                                                                  "Foundation public school - bahria university for short course after"="FPS",
+                                                                                                  "Lahore University of Management Sciences"="LUMS", "Lahore University of Management Sciences"="LUMS",
+                                                                                                  "Iqra University"="IU",
+                                                                                                  "Aga Khan Higher Secondary"="AGHS", 
+                                                                                                  "University Of Karachi"="KU","University of Karachi"="KU","Karachi University"="KU","University of karachi"="KU",
+                                                                                                  "Szabist karachi"="SZABIST",
+                                                                                                  "Goverment degree science college malir"="GDSCM",
+                                                                                                  "Baqai medical University"="BMU", "Iqra university"="IU", "Iqra Unversity"="IU","IQRA UNIVERSITY"="IU", "iqra university"="IU",
+"IU main campus karachi"="IU","IU EDC campus"="IU",
+                                                                                                  "Institute of Business Management"="IBM","Institute of business management"="IBM",
+"The Islamia University of Bahawalpur"="IUB",
+"Sir syed university of Engineering Technology"="SSUET","Sir Syed University of Engineering & Technology"="SSUET","Sir Syed University Of Engineering and Technology"="SSUET","Sir syed university of engineering and technology"="SSUET","SSUET Of Engineering And Technology"="SSUET","Sir syed University of engineering and technology"="SSUET","Sirsyed university of engineering and technology"="SSUET","Sir Syed University Of Engineering & Technology"="SSUET","Sir Syed University of Engineering and Technology"="SSUET","Sir Syed university of engineering and technology"="SSUET","Sur Syed University of Engineering and Technology"="SSUET","Sir Syed university of engineering and technology"="SSUET","Sir Syed University of Engineering and Technology"="SSUET","Sir Syed University"="SSUET","Adamjee Government Science College"="ADAMJEE", "Memon Industrial and Technical Institute"="MEMON INSTITUTE",
+"National University of Sciences and technology Pakistan"="NUST",
+"University of engineering and technology Peshawar"="UET PESHAWAR", "COMSATS University Islamabad (Abbottabad campus)"="COMSAT", "Szabist Islamabad"="SZABIST")))
+
+dataRenamed$new_unicol
+```
+
+# gsub() to clean Platform field
+
+```{r}
+dataRenamed <- dataRenamed %>% mutate(new_platform=gsub( "watsapp|WhatsApp group|Whatsapp group|Group|Whatsapp link|WhatsApp Watsapp|Job group on What's app|Through a Watsapp|From Watsapp|I heard about this course through a whatsapp group|People of IBA and Lums|Through a Watsapp","Watsapp",gsub( "Through a friend|Through a friend|Friend|Through a collegue|University friends|Friends|From a friend|My friend tell me about this course|From friend|From a Friend|A friend|An hour ago from a friend|Friend suggest|From my friend|By friend|My friend send me this advertisec|My friend sent me the details of this course on WhatsApp|One of my friend recommended me to do this course together with them.|Faizan|Uzair Aslam|By a friend","Friends",gsub( "LinkedIn|From LinkedIn and also from my friend|Linkedin|on linkedin page|Linkdin|through a friend on LinkedIn","LinkedIn",gsub( "Soical media|Fb group|Social Network|Facebook post|Facebook Group|Social Facebook|Facebook group: People of IBA and LUMS|IBA and LUMS Facebook page|Facebook group of IBA|Facebook group|Social Media|facebook|On Facebook|Face Book|FB|Facebook page|The group of iba and lums|On Facebook group|Facebook|There is Facebook of IBA and LUMS students where I get to know about this course|IBA Watsapp Facebook|I heard it on Facebook|Peopel of LUMS and IBA group|A group called \"People of IBA and LUMS\"", "Facebook",dataRenamed$Platform, ignore.case = TRUE)))))
+
+head(dataRenamed)
+dataRenamed$new_platform
+
+```
+
+
+```{r}
+#gsub( "Through a friend|Through a friend|Friend|Through a collegue|University friends|Friends|From a friend|My friend tell me about this course|From friend|From a Friend|A friend|An hour ago from a friend|Friend suggest|From my friend|By friend|My friend send me this advertisec|My friend sent me the details of this course on WhatsApp","Friends",dataRenamed$Platform,ignore.case = TRUE)
+```
+
+
+```{r}
+#gsub( "LinkedIn|From LinkedIn and also from my friend|Linkedin|on linkedin page|Linkdin|through a friend on LinkedIn","LinkedIn",dataRenamed$Platform,ignore.case = TRUE)
+```
+
+
+```{r}
+#gsub( "Soical media|Fb group|Social Network|Facebook post|Facebook Group|Social Facebook|Facebook group: People of IBA and LUMS|IBA and LUMS Facebook page|Facebook group of IBA|Facebook group|Social Media|facebook|On Facebook|Face Book|FB|Facebook page|The group of iba and lums|On Facebook group|Facebook|There is Facebook of IBA and LUMS students where I get to know about this course", "Facebook", dataRenamed$Platform,ignore.case = TRUE)
+```
+
+# Exporting As CSV File
+```{r}
+
+write.csv(dataRenamed,"/Users/monizanaseem/Desktop/cubestatistica/CourseDataCleaned/moniza_CourseDataCleaned.csv", row.names = FALSE)
