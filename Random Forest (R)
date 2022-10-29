@@ -1,0 +1,115 @@
+---
+title: "RF_Model through tidymodel"
+author: "Moniza Naseem"
+date: "2022-10-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Loading Libraries
+
+```{r}
+library(ranger)
+library(tidyverse)
+library(tidymodels)
+library(parsnip)
+library(kableExtra)
+library(rsample)
+library(ggplot2)
+```
+
+#Reading Data
+
+```{r}
+dfRaw <- read_csv("Data/Data - DS C1 Course.csv")
+head(dfRaw, n=10)
+```
+
+# Selecting Attributes Of Interest
+
+```{r}
+dataSelect <- as.data.frame(select(dfRaw,'Age','Gender','Payment'))
+dataSelect
+```
+
+# Data Cleaning
+## Replacing "Under 17" by "16"
+## Converting Age as numeric and Gender as factor
+
+```{r}
+dataSelect$Age <- str_replace(string = dataSelect$Age, pattern = "Under 17", replacement = "16")
+dataSelect$Age <- as.numeric(dataSelect$Age)
+dataSelect$Gender <- as.factor(dataSelect$Gender)
+
+```
+
+## Replacing Paid with 1 in Payment Column
+
+```{r}
+dataSelect$Payment <- ifelse(dataSelect$Payment=="Paid", 1, 0)
+dataSelect$Payment[is.na(dataSelect$Payment)] <- 0 
+dataSelect$Payment <- as.factor(dataSelect$Payment)
+```
+
+```{r}
+table<-table(dataSelect$Gender,dataSelect$Payment)
+table <- kable(prop.table(table), digits=2, format = "html", row.names=T) %>% kable_styling(bootstrap_options = c("striped", "hover"),
+                full_width = F,
+                font_size = 15,
+                position = "left")
+table
+
+```
+ 
+ # Using Library rsample to split data 
+ 
+```{r}
+set.seed(1234)
+dataSplit <- initial_split(dataSelect,prop=0.80)
+dataTrain <- training(dataSplit)
+dataTest <- testing(dataSplit)
+class(dataTest)
+
+```
+
+# Applying RF Model For Classification Problem (Predicting Payment Based On Gender and Age)
+
+```{r}
+rf_model <- rand_forest(mtry= 1, trees= 500, min_n= 5 ) %>% set_engine("ranger") %>% set_mode("classification") %>% translate()
+```
+ 
+ # Fitting the RF Model
+ 
+```{r}
+rf_model_fit <- rf_model %>%
+  fit(Payment ~ Age + Gender, data = dataTrain)
+rf_model_fit
+```
+
+# Predicting Payment on Testdata
+
+```{r}
+rf_model_predict <- predict(rf_model_fit, new_data=dataTest)
+```
+
+ # Extracting Predicted Values
+ 
+```{r}
+predicted_classes <- rf_model_predict$.pred_class
+predicted_classes
+observed_classes <- dataTest$Payment
+observed_classes
+```
+ 
+ # Finding Accuracy By Comparing Predicted Classes vs Observed Classes Through Confusion Matrix
+ 
+```{r}
+confusion_matrix <- as.matrix((table(predicted_classes,observed_classes)))
+confusion_matrix
+accuracy_percentage <- prop.table(confusion_matrix)
+accuracy_percentage
+```
+ 
