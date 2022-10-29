@@ -1,0 +1,76 @@
+---
+title: "Decision_Tree"
+author: "Moniza Naseem"
+date: "2022-10-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load libraries
+
+```{r}
+library(tidyverse)
+library(rpart)
+library(rpart.plot)
+library(caret)
+```
+
+# Reading dataset
+
+```{r}
+dfRaw <- read_csv("Data/Data - DS C1 Course.csv")
+```
+
+# Subsetting to use for decision tree
+
+```{r}
+dataSelect <- as.data.frame(select(dfRaw, Payment,Age,Gender,`Are you currently attending University / College?`))
+```
+
+# Data cleaning
+
+```{r}
+dataSelect$Age <- as.numeric(str_replace(dataSelect$Age, "Under 17", "16"))
+dataSelect$Payment<- as.factor(str_replace_all(dataSelect$Payment, c("Paid"= "1", "Pending"="0","Maybe"="0")))
+dataSelect$Payment
+dataSelect$`Are you currently attending University / College?`<- as.factor(str_replace_all(dataSelect$`Are you currently attending University / College?`, c("Yes"="1", "No"="0")))
+dataSelect$`Are you currently attending University / College?`
+#dataSelectNew <- dataSelect[-c(dataSelect$Gender=="Prefer not to say",)]
+```
+
+# Dividing data in Training, Validation and Test set
+
+```{r}
+
+set.seed(123)
+nrow(dataSelect)
+sampleSizeTraining <- floor(nrow(dataSelect)*0.60)
+sampleSizeTraining
+sampleSizeValidation <- floor(nrow(dataSelect)*0.20)
+sampleSizeTest <- floor(nrow(dataSelect)*0.20)
+
+indicesTraining <- sort(sample(seq_len(nrow(dataSelect)),size = sampleSizeTraining))
+indicesTraining
+indicesNotTraining <- setdiff(seq_len(nrow(dataSelect)),indicesTraining)         
+indicesValidation <- sort(sample(indicesNotTraining, size = sampleSizeValidation))
+indicesTest <-  sort(setdiff(indicesNotTraining,indicesValidation))
+
+dataTraining <- dataSelect[indicesTraining,]
+dataValidation <- dataSelect[indicesValidation,]
+dataTest <- dataSelect[indicesTest,]        
+         
+        
+```
+
+# Decision tree for Training data set
+
+```{r}
+set.seed(123)
+# Build the model
+model_dt <- rpart(Payment~ . , data = dataTraining, method = "class")
+rpart.plot(model_dt,extra = 106)
+```
+
