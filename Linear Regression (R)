@@ -1,0 +1,172 @@
+---
+title: "multiple_linear_regression_model to predict Age"
+author: "Moniza Naseem"
+date: "2022-10-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#load library
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(ggpubr)
+library(ltm) # to calculate biserial correlation
+library(caret)
+
+```
+
+# read data set
+```{r}
+dfRaw <- read_csv("Data/Data - DS C1 Course.csv")
+head(dfRaw,n=10)
+
+```
+
+# data cleaning replacing under17 by 16 in Age column, converting Payment into dummy variable(1/0)
+
+```{r}
+str_replace(dfRaw$Age, pattern = "Under 17",replacement ="16" )
+dfRaw$Age <- as.numeric(dfRaw$Age)
+dfRaw$Age
+dfRaw$Payment <- ifelse(dfRaw$Payment=="Paid", 1,0)
+dfRaw$Payment[is.na(dfRaw$Payment)] <- 0
+dfRaw$Payment
+```
+
+# data cleaning, replacing Degrees with 1,2,3,4 
+
+```{r}
+dfRaw$`Latest Degree Completed or in Progress?` <- case_when(
+  grepl("H.S.C", dfRaw$`Latest Degree Completed or in Progress?`)~"1",
+  grepl("Bachelors", dfRaw$`Latest Degree Completed or in Progress?`)~"2",
+  grepl("Masters", dfRaw$`Latest Degree Completed or in Progress?`)~"3",
+  grepl("PhD",dfRaw$`Latest Degree Completed or in Progress?`)~"4"
+)
+dfRaw$`Latest Degree Completed or in Progress?` <- as.numeric(dfRaw$`Latest Degree Completed or in Progress?`)
+dfRaw$`Latest Degree Completed or in Progress?`
+```
+
+# Visualization and Correlation between variables to determine if they are fit for Linear Regression
+# biserial.cor is correlation between continuous and categorical binary variable
+
+```{r}
+plot_1<- ggplot(dfRaw, aes(x=Payment , y=Age))+ geom_point()+stat_smooth()
+plot_2<- ggplot(dfRaw, aes(x=Gender, y=Age))+ geom_point()+stat_smooth()
+correlation.payment <- biserial.cor(dfRaw$Age, dfRaw$Payment)
+correlation.payment 
+correlation.degree <- cor(dfRaw$`Latest Degree Completed or in Progress?`,dfRaw$Age)
+correlation.degree
+```
+
+
+#split data in train, validate and test
+# Create the randomly-sampled indices for the dataframe. Use setdiff() to
+# avoid overlapping subsets of indices.
+# Finally, output the three dataframes for training, validation and test.
+
+```{r}
+
+
+set.seed(1234)
+fractionTest<-0.15
+fractionValidation<-0.15
+fractionTraining<-0.70
+
+sampleSizeTraining   <- floor(fractionTraining   * nrow(dfRaw))
+sampleSizeTraining
+sampleSizeValidation <- floor(fractionValidation * nrow(dfRaw))
+sampleSizeValidation
+sampleSizeTest       <- floor(fractionTest       * nrow(dfRaw))
+sampleSizeTest
+
+
+indicesTraining    <- sort(sample(seq_len(nrow(dfRaw)), size=sampleSizeTraining))
+indicesNotTraining <- setdiff(seq_len(nrow(dfRaw)), indicesTraining)
+indicesValidation  <- sort(sample(indicesNotTraining, size=sampleSizeValidation))
+indicesTest        <- sort(setdiff(indicesNotTraining, indicesValidation))
+
+
+
+dfTraining   <- dfRaw[indicesTraining, ]
+dfTraining
+dfValidation <- dfRaw[indicesValidation,  ]
+dfValidation
+dfTest       <- dfRaw[indicesTest, ]
+dfTest
+```
+
+# Linear Regression Model
+
+```{r}
+
+model_lm<- lm(Age~Payment+`Latest Degree Completed or in Progress?`+ `Are you currently attending University / College?`, data=dfTraining)
+summary(model_lm)
+```
+
+
+# Plotting Linear Regression Line
+
+```{r}
+plot_payment<-ggplot(dfTraining, aes(x=Payment,y=Age))+geom_point()
+plot_payment+geom_smooth(method="lm",color="black")
+
+plot_degree<-ggplot(dfTraining, aes(x=dfTraining$`Latest Degree Completed or in Progress?`, y=Age))+geom_point()
+plot_degree+geom_smooth(method="lm",color="black")
+```
+
+# Predicting on training data set
+
+```{r}
+y_pred_train <- predict(model_lm, dfTraining, type = 'response')
+y_pred_train
+
+```
+
+# Calculating RMSE and R2 of y_pred_train and dfTraining$Age
+
+```{r}
+
+rmse_train <- RMSE(y_pred_train,dfTraining$Age)
+rmse_train
+R2(y_pred_train,dfTraining$Age)
+```
+
+# Predicting on validation data set
+
+```{r}
+y_pred_validation <- predict(model_lm, dfValidation, type = 'response')
+y_pred_validation
+```
+
+# Calculating RMSE  and R2 of y_pred_validation and dfValidation$Age
+
+```{r}
+rmse_validation <- RMSE(y_pred_validation,dfValidation$Age)
+rmse_validation
+R2(y_pred_validation,dfValidation$Age)
+```
+
+# Predicting on test data set
+
+```{r}
+y_pred_test <- predict(model_lm, dfTest, type='response')
+y_pred_test
+```
+
+# Calculating RMSE and R2 of y_pred_test and dfTest$Age : sqrt(mean((y_pred_test-dfTest$Age)^2))
+
+```{r}
+rmse_test <- RMSE(y_pred_test, dfTest$Age)
+rmse_test
+R2(y_pred_test, dfTest$Age)
+```
+
+```{r}
+table <- data.table::data.table(dfTest$Age, floor(y_pred_test))
+table
+```
+
