@@ -1,0 +1,157 @@
+---
+title: "logistic_regression to Predict Payment"
+author: "Moniza Naseem"
+date: "2022-10-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+library(tidyverse)
+library(dplyr)
+library(caret)
+library(ggplot2)
+```
+
+```{r}
+
+dfRaw <- read_csv("Data/Data - DS C1 Course.csv")
+head(dfRaw,n=10)
+
+```
+
+# data cleaning replacing under17 by 16 in Age column, converting Payment into dummy variable(1/0)
+
+```{r}
+str_replace(dfRaw$Age, pattern = "Under 17",replacement ="16" )
+dfRaw$Age <- as.factor(dfRaw$Age)
+
+dfRaw$Payment <- ifelse(dfRaw$Payment=="Paid", 1,0)
+dfRaw$Payment[is.na(dfRaw$Payment)] <- 0
+dfRaw$Payment
+
+dfRawNew <- dfRaw[ -c("Prefer not to say" %in% dfRaw$Gender), ]
+dfRaw$Gender <- as.factor(dfRaw$Gender)
+```
+
+# data cleaning, replacing Degrees with 1,2,3,4 
+
+```{r}
+#dfRawNew$`Latest Degree Completed or in Progress?` <- case_when(
+  #grepl("H.S.C", dfRawNew$`Latest Degree Completed or in Progress?`)~"1",
+  #grepl("Bachelors", dfRawNew$`Latest Degree Completed or in Progress?`)~"2",
+  #grepl("Masters", dfRawNew$`Latest Degree Completed or in Progress?`)~"3",
+  #grepl("PhD",dfRawNew$`Latest Degree Compleed or in Progress?`)~"4"
+#)
+dfRawNew$`Latest Degree Completed or in Progress?` <- as.factor(dfRawNew$`Latest Degree Completed or in Progress?`)
+dfRawNew$`Latest Degree Completed or in Progress?`
+```
+
+#split data in train, validate and test
+# Create the randomly-sampled indices for the dataframe. Use setdiff() to
+# avoid overlapping subsets of indices.
+# Finally, output the three dataframes for training, validation and test.
+
+```{r}
+
+
+set.seed(12345)
+fractionTest<-0.20
+fractionValidation<-0.20
+fractionTraining<-0.60
+
+sampleSizeTraining   <- floor(fractionTraining   * nrow(dfRawNew))
+sampleSizeTraining
+sampleSizeValidation <- floor(fractionValidation * nrow(dfRawNew))
+sampleSizeValidation
+sampleSizeTest       <- floor(fractionTest       * nrow(dfRawNew))
+sampleSizeTest
+
+
+indicesTraining    <- sort(sample(seq_len(nrow(dfRaw)), size=sampleSizeTraining))
+indicesNotTraining <- setdiff(seq_len(nrow(dfRaw)), indicesTraining)
+indicesValidation  <- sort(sample(indicesNotTraining, size=sampleSizeValidation))
+indicesTest        <- sort(setdiff(indicesNotTraining, indicesValidation))
+
+
+
+dfTraining   <- dfRawNew[indicesTraining, ]
+dfTraining
+dfValidation <- dfRawNew[indicesValidation,  ]
+dfValidation
+dfTest       <- dfRawNew[indicesTest, ]
+dfTest
+```
+
+# Logistic regression model for training data
+
+```{r}
+model_glm<- glm(Payment ~ Age+ `Latest Degree Completed or in Progress?`+ Gender, data=dfTraining, family=binomial)
+summary(model_glm)
+```
+
+# Predicting for training data
+
+```{r}
+y_pred_train <- predict(model_glm, newdata = dfTraining, type = 'response')
+y_pred_train
+```
+
+# Plotting 
+
+
+```{r}
+ggplot(dfTraining, aes(x=Age, y=Payment)) + geom_point() +
+      geom_smooth(method="glm", color="green", 
+                method.args = list(family=binomial))
+
+
+ggplot(dfTraining, aes(x=`Latest Degree Completed or in Progress?`, y=Payment)) + geom_point() +
+      geom_smooth(method="glm", color="green", 
+                method.args = list(family=binomial))
+
+ggplot(dfTraining, aes(x=Gender, y=Payment)) + geom_point() +
+      geom_smooth(method="glm", color="green", 
+                method.args = list(family=binomial))
+
+
+```
+
+# Predicting for validation dataset
+
+```{r}
+y_pred_validation <- predict(model_glm, newdata=  dfValidation, type = 'response')
+y_pred_validation
+
+```
+
+# Plotting
+
+```{r}
+ggplot(dfValidation, aes(x=Age, y=Payment)) + geom_point() +
+      geom_smooth(method="glm", color="green", se=FALSE,
+                method.args = list(family=binomial))
+
+
+ggplot(dfValidation, aes(x=`Latest Degree Completed or in Progress?`, y=Payment)) + geom_point() +
+      geom_smooth(method="glm", color="green", se=FALSE,
+                method.args = list(family=binomial))
+
+ggplot(dfValidation, aes(x=Gender, y=Payment)) + geom_point() +
+      geom_smooth(method="glm", color="green", se=FALSE,
+                method.args = list(family=binomial))
+
+```
+
+
+# Predicting for test dataset
+
+```{r}
+#y_pred_test <- predict(model_glm, newdata= dfTest, type = 'response')
+#y_pred_test
+```
+
