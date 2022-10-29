@@ -1,0 +1,60 @@
+---
+title: "Untitled"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(tidyverse)
+```
+
+Column 
+-----------------------------------------------------------------------
+# Course Data
+
+### Importing Data
+
+```{r, echo=TRUE}
+dfRaw <- read_csv("Data/Data - DS C1 Course.csv")
+```
+Column 
+-----------------------------------------------------------------------
+# Statistics
+### Summarizing Data
+
+```{r}
+head(dfRaw)
+summary(dfRaw)
+```
+
+### Displaying all Fields
+
+```{r}
+dfRaw %>% colnames()
+```
+
+# Analysis
+### Analysis by Gender and Work Experience
+
+```{r}
+dfRaw %>% group_by(`Prior Work Experience in Data Science or Machine Learning`,Gender) %>%count()
+```
+### Analysis by Gender and Payment
+
+```{r}
+dfRaw %>% group_by(Gender,Payment) %>% count()
+```
+
+Column 
+-----------------------------------------------------------------------
+# Interesting Trends
+### Analysis of which platform was most popular
+
+```{r}
+dfRaw %>% group_by(Gender,"How and where did you hear about this course?") 
+```
+
+
