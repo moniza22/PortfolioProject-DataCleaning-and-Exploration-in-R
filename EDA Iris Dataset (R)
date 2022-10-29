@@ -1,0 +1,161 @@
+---
+title: "Sample2"
+author: "Moniza Naseem"
+date: "2022-09-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r,echo=FALSE}
+library(datasets)
+detach("package:datasets",unload=TRUE)
+cat("\014")
+```
+```{r}
+
+```
+
+# Loading Iris Dataset
+```{r}
+library(datasets)
+head(iris)
+summary(iris)
+
+```
+
+# Plotting Iris Dataset 
+## Graphical Representation
+
+```{r}
+plot(iris)
+plot(iris$Petal.Width)
+plot(iris$Species,iris$Petal.Width)
+barplot(iris$Petal.Width)
+hist(iris$Petal.Width)
+plot(iris$Petal.Width,iris$Species)
+
+plot(iris$Petal.Length,iris$Petal.Width,
+     col="red",pch=19,
+     main="Petal Lenght vs Petal Width",
+     xlab="Petal Length",ylab="Petal Width")
+plot(iris$Petal.Width,iris$Petal.Length,
+     col="red",pch=19,main="Petal Lenght vs Petal Width",
+     xlab="Petal Width",ylab="Petal Length")
+```
+
+## Histograms For Iris Dataset
+
+```{r}
+hist(iris$Sepal.Length)
+hist(iris$Sepal.Width)
+hist(iris$Petal.Length)
+hist(iris$Petal.Width)
+par(mfrow= c(3,1)) # NOT WORKING
+```
+
+## Histogram For Individual Species
+ 
+```{r}
+hist(iris$Petal.Width[iris$Species=="setosa"],
+     xlim = c(0,3),
+     main="Petal Width For Setosa",
+     xlab="Petal Width",
+     col="green")
+hist(iris$Petal.Width[iris$Species=="virginica"],
+     xlim = c(0,3),
+     main="Petal Width For Virginica",
+     xlab="Petal Width",
+     col="purple")
+hist(iris$Petal.Width[iris$Species=="versicolor"],
+     xlim = c(0,3),
+     main="Petal Width For Versicolor",
+     xlab = "Petal Width",
+     col="blue")
+
+```
+
+```{r}
+detach("package:datasets",unload=TRUE)
+```
+
+## Basic Statistics
+
+```{r}
+library(datasets)
+head(iris)
+
+```
+
+## Using Summary() Function To Analyze Data
+
+```{r}
+summary(iris)
+summary(iris$Sepal.Length)
+summary(iris$Sepal.Width)
+summary(iris$Species)
+
+```
+
+```{r}
+library(datasets)
+head(iris)
+```
+## Install and load psych package
+
+```{r}
+p_load(psych)
+describe(iris)
+describe(iris$Sepal.Length)
+
+```
+
+## Selecting Cases
+## Select cases to focus the analysis
+
+## Histogram for Petal Length for all Species
+
+```{r}
+library(datasets)
+head(iris)
+hist(iris$Petal.Length)
+summary(iris$Petal.Length)
+```
+
+## Selecting cases by only one categorial variable
+
+## Histogram for Petal Length for Specie Setosa
+```{r}
+hist(iris$Petal.Length[iris$Species=='setosa'],main="Petal Length for Setosa")
+```
+
+## Selecting cases by only one quantitative variable
+
+## Histogram for Petal Length <2 for all species
+```{r}
+hist(iris$Petal.Length[iris$Petal.Length<2], main="Petal Length < 2")
+```
+
+## Multiple Selections
+## Histogram for Petal length <1.5 for Specie Setosa only
+
+```{r}
+library(datasets)
+head(iris)
+hist(iris$Petal.Length[iris$Petal.Length<1.5 & iris$Species=='setosa'], main="Petal Length < 1.5 of Iris Setosa")
+```
+## Creating Subsample For Iris Setosa
+## Instead of typing multiple selections criteria of categorial or quantitative 
+## variables in histogram command, we can create a
+## sub sample for Iris Setosa 
+## Format: dataset_name[dataset_name$attribut_name=="",rows,cols]
+```{r}
+i.setosa <- iris[iris$Species=="setosa",]
+summary(i.setosa)
+head(i.setosa)
+hist(i.setosa$Petal.Length)
+```
+
