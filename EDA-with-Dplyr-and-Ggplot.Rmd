@@ -1,0 +1,229 @@
+---
+title: "EDA with Dplyr and Ggplot"
+author: "Cube Statistica"
+date: '2022-09-20'
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+The tutorial will show you how to use data cleaning, transformation and 
+visualization to explore the data in the systematic manner. 
+This is a task Statisticians refer as **Exploratory Data Analysis (EDA)**.
+
+Specifically, EDA is an iterative cycle :
+
+1. Generate questions about the data.
+2. Search for answers by visualizing, transforming and modelling your data.
+3. Use what you learn to refine your questions and/or generate new questions.
+
+Data Cleaning is just one application of EDA: A process of transforming raw 
+data into consistent data that can be analyzed. 
+
+Some of the examples of data cleaning is that the data is consistent, have 
+correct data types and missing data is imputed. We will start with loading the 
+tidyverse package and our data set. 
+
+## Importing Packages
+
+```{r packages, warning=FALSE}
+library(tidyverse)
+library(lubridate)
+```
+
+
+```{r load data}
+dataRaw <- read_csv("Data-DS-C1-Course.csv")
+head(dataRaw, n = 10)
+```
+EDA is fundamentally a creative process. Like any creative processes, the key 
+is to ask quality questions. In our course data set, we will ask the 
+following questions:
+
+1. How has number of responses in form varied over the time?
+2. What is the distribution of university the students filled 
+out the form?
+3. Which social platform students heard about the course?
+
+While we will restrict our tutorial to these questions but you can think of 
+other questions when making your dashboard: 
+
+1. What is Distribution of country and city the responses are from ?
+2. How does paying for the course correlate with Gender and Age ?
+3. What Prior Work experience in R and Python the students have ?
+
+## Data Cleaning
+
+For our set of specified questions, we start by selecting the variables of 
+interest. Specifically, we will select the following variables: 
+
+1. Student ID
+2. Time stamp
+3. Name of University or College currently or previously attended ?
+
+Before data selection, we will rename the columns as some columns have spaces
+and have long names. We will use rename function in dplyr package.
+
+
+```{r variables rename}
+dataRenamed <- dataRaw %>%
+  rename("Id" = "Student ID",
+         "Date_time" = "Timestamp",
+         "Qr_uni_col" = "Name of University or College currently or previously attended?"
+         )
+
+# Check for renaming
+names(dataRenamed[1:10])
+```
+Now we will select the required variables.
+
+```{r variable selection}
+# select variables for analysis
+dataSelected <- select(dataRenamed,
+                       Id, Date_time, Qr_uni_col)
+
+# make ID rowname of data frame
+dataSelected <- column_to_rownames(dataSelected , var = "Id")
+
+head(dataSelected)
+```
+### How has number of responses in form varied over the time?
+
+Let us say we want to analyze how number of responses have varied over time. For
+this we start by correcting the date-time variable type with help of lubridate
+```{r date time cleaning}
+# Convert time column to data-time type
+dataSelected$Date_time <- lubridate::mdy_hms(dataSelected$Date_time)
+
+# Make date and time in separate variables
+dataSelected <- tidyr::separate(dataSelected, Date_time, c("Date", "Time"), sep = " ")
+
+# Convert Date to date type
+dataSelected$Date <- lubridate::ymd(dataSelected$Date)
+
+head(dataSelected)
+```
+
+After separating date and time variables, we can create grouped summaries to see
+students filling out the form
+
+```{r grouped summary}
+# make grouped summary of students by day
+groupedDate <- dataSelected %>% 
+  group_by(day = lubridate::floor_date(x = Date, unit = 'day')) %>%
+  summarize(grouped = n())
+
+groupedDate
+```
+Now we can make a time series plot to see the trend of course participation.
+
+```{r plot of students participation}
+ggplot(data = groupedDate, mapping = aes(x = day, y = grouped)) +
+  geom_line(color = "blue") +
+  geom_point() +
+  xlab("Days") +
+  ylab("Count") +
+  scale_x_date(limit=c(as.Date("2022-08-20"),as.Date("2022-09-07")))
+```
+
+We see that 109, 44.1% of total registrations, were filled on August 22nd. 
+After which there was sharp decline. The form count increased on August 25th by 
+52.3 % compared to its previous day and then again on August 28th.
+
+### What is the distribution of university ?
+Another important aspect of registrations to see which University and discipline
+the students are from. We start by cleaning the university variable
+```{r analyze university background}
+dataSelected %>% 
+  select(Qr_uni_col) %>%
+  distinct() %>% #this line removes duplicates
+  count()
+```
+
+```{r see unique values}
+# First six unique values
+head(unique(x = dataSelected$Qr_uni_col))
+```
+There are 143 unique values currently for University background. If you see the 
+list, there are duplicates in the entries.
+There are some clear categories that we can combine jobs into. 
+For example, "Iba Karachi", "IBA" and "Institute of Business Administration" 
+can be combined into "IBA". We will use three functions to do this
+
+* mutate() to change or create new variables
+* case_when() as a kind of if/else command
+* str_detect() to select specified text
+
+```{r categorize }
+dataCategorized <- dataSelected %>%
+  mutate(
+    Uni_col = case_when(
+      str_detect(
+        Qr_uni_col,
+        "IBA|Institute of Business Administration|Iba Karachi|IBA, Karachi|Iba Karachi|institute of business administration|Institute of business administration|INSTITUTE OF BUSINESS ADMINISTRATION KARACHI|Institute Of Business Administration|Institute Of Business Administration, Karachi|Institute of Business Adminstration|Institute of business administration karachi|INSTITUTE OF BUISNESS ADMINISTRATION KARACHI"
+      ) ~ "IBA",
+      str_detect(
+        Qr_uni_col,
+        "Azam|Quaid I azam university|Quaid-I-Azam University, Islamabad|Quaid e Azam University|Quaid e Azam university       Islamabad|Quaid-e-Azam University Islamabad|Quaid-i-Azam University Islamabad|Quaid e Azzam university Islamabad"
+      ) ~ "QU",
+      str_detect(
+        Qr_uni_col,
+        "Sir syed university of Engineering Technology|Sir syed university of engineering and technology|Sir Syed University|Sir Syed University Of Engineering And Technology|Sir Syed University Of Engineering & Technology|Sir syed University of engineering and technology|Sirsyed university of engineering and technology|Sir Syed University of Engineering and Technology|Sir Syed university of engineering and technology|Sur Syed University of Engineering and Technology|Sir Syed University Engineering Technology"
+      ) ~ "SYED",
+      str_detect(
+        Qr_uni_col,
+        "Ned university|NED University of Engineering and Technology Karachi|NED|Ned University"
+      ) ~ "NED",
+      str_detect(Qr_uni_col, "IQRA|Iqra|iqra|iqra university") ~ "IQRA",
+      str_detect(Qr_uni_col, "Sindh") ~ "SMIU" ,
+      str_detect(Qr_uni_col, "Karachi|University of karachi") ~ "KU",
+      str_detect(Qr_uni_col, "Szabist", ) ~ "SZABIST",
+      str_detect(Qr_uni_col, "Management|management", ) ~ "IOBM",
+      str_detect(Qr_uni_col, "University of engineering and technology Peshawar") ~ "UET",
+      TRUE ~ Qr_uni_col  #keep all others same
+    )
+  )
+```
+
+Let us check how many distinct entries we have.
+
+```{r}
+dataCategorized %>% 
+  select(Uni_col) %>%
+  distinct() %>% #this line removes duplicates
+  count()
+```
+
+```{r}
+# see the unique values
+head(unique(x = dataCategorized$Uni_col))
+```
+We have reduced from 143 unique values to 71 values only. This means we have made 
+our data more consistent. Now we make Bar Plot to visualize it.
+
+```{r bar plot university}
+# Sort universities by their frequencies
+uniSorted <- dataCategorized %>% 
+  group_by(Uni_col) %>%
+  summarise(Total = n()) %>%
+  arrange(desc(Total)) %>%
+  head(n = 6)
+  
+# Make Bar Plot
+p <- ggplot(data = uniSorted, aes(x= reorder(Uni_col, Total), y = Total)) + 
+  geom_bar(stat="identity") +
+  coord_flip() +
+  ylab("Number of Students") +
+  xlab("University/College") 
+  
+p
+```
+
+We see that 29.1% of the students participated were from IBA followed by IQRA and
+Sir Syed University 10.9% and 10.1 % respectively.
+
+
+

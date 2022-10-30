@@ -1,0 +1,130 @@
+---
+title: "Random Forest"
+author: "Cube Statistica"
+date: "2022-10-03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r packages, warning=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(kableExtra)
+library(rsample)
+```
+
+## Data Loading
+
+```{r}
+dataRaw <- read_csv("Data-DS-C1-Course.csv")
+head(dataRaw, n = 10)
+
+```
+## Selecting Variables
+
+We model Payment as our dependent variable and Age, Gender as our independent variable.
+Before moving on, we select our required data.
+
+```{r}
+dataSelect <- select(dataRaw, Age, Gender, Payment)
+head(dataSelect)
+```
+
+## Data Cleaning
+Before Modelling for Random Forest, we will have to clean our data.
+Firstly, we replace "Under 17" as 16 in Age feature.
+Then we will convert Age as numeric feature and Gender as factor variable.
+Then we replace all paid students as 1 and others as 0. This will make our
+Payment column as Binary.
+
+```{r}
+# replace Under 17 with 16
+dataSelect$Age <- str_replace(string = dataSelect$Age, pattern = "Under 17", replacement = "16")
+
+# convert Age as numeric and Gender as factor
+dataSelect$Age <- as.numeric(dataSelect$Age)
+dataSelect$Gender <- as.factor(dataSelect$Gender)
+
+# replace paid as 1 and others as non paid
+dataSelect$Payment <- if_else(condition = dataSelect$Payment == "Paid", true = 1, false = 0)
+
+# replace NA in payment as 0.
+dataSelect$Payment <- dataSelect$Payment %>% replace_na(0)
+
+tail(dataSelect)
+```
+
+```{r}
+# Visualize the count of Gender Payments
+ggplot(data = dataSelect, mapping = aes(x = Payment, fill = Gender)) +
+  geom_bar()
+```
+
+```{r}
+cross_table <- table(dataSelect$Payment, dataSelect$Gender)
+cross_table <- kable(prop.table(cross_table),digits = 3) %>%
+   kable_styling(latex_options = "striped",font_size = 20)
+cross_table
+```
+## Split Data in Train and Test set
+
+```{r}
+# fix seed for randomness
+set.seed(123)
+
+# make outcome variable as factor since it is required by tidymodel
+dataSelect$Payment <- as.factor(dataSelect$Payment)
+
+# train-test split
+datasplit <- initial_split(data = dataSelect, prop = 0.80)
+
+# Get the resultant data set
+data_train <- training(datasplit)
+data_test <- testing(datasplit)
+```
+
+There are three steps for specifying the model using tidy verse :
+1. Specify the type of model based on its mathematical structure (e.g., linear regression, random forest, KNN, etc).
+2. Specify the engine for fitting the model.
+3. When required, declare the mode of the model (mode for numeric outcome = regression)
+
+```{r}
+# Specify the model using parsnip in tidy model
+rf_model <- rand_forest(trees = 1000, min_n = 5) %>% 
+  set_engine("ranger", verbose = TRUE) %>% 
+  set_mode("classification")
+
+# Now we can use fit() or fit_xy()
+rf_model_fit <- rf_model %>%
+  fit(Payment ~ Age + Gender, data = data_train)
+```
+
+```{r}
+# Make full test set prediction
+model_prediction <- predict(object = rf_model_fit, new_data = data_test)
+
+predicted.classes <- model_prediction$.pred_class
+observed.classes <- data_test$Payment
+```
+
+```{r}
+# accuracy
+accuracy <- mean(observed.classes == predicted.classes)
+accuracy
+```
+```{r}
+# Confusion matrix, number of cases
+table(observed.classes, predicted.classes)
+```
+```{r}
+# Confusion matrix, proportion of cases
+table(observed.classes, predicted.classes) %>% 
+  prop.table() %>% round(digits = 3)
+```
+
+
+
+
